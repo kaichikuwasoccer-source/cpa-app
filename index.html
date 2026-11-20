@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>CPA Study Logger</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -13,6 +15,7 @@
       --muted: #6b7280;
       --primary: #2563eb;
       --primary-hover: #1d4ed8;
+      --danger: #ef4444;
       --border: #e5e7eb;
     }
     * { box-sizing: border-box; }
@@ -59,12 +62,28 @@
     .view.active { display: block; }
 
     .section { margin-bottom: 16px; }
+    .label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
     label.title {
       display: block;
       font-size: 0.85rem;
       font-weight: 600;
       color: var(--muted);
       margin-bottom: 8px;
+    }
+    .label-row label.title { margin-bottom: 0; }
+    .edit-toggle {
+      border: none;
+      background: transparent;
+      color: var(--primary);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 2px 6px;
     }
     .timer-box {
       text-align: center;
@@ -106,12 +125,27 @@
       font-size: 0.85rem;
       cursor: pointer;
       transition: 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
     .chip.active {
       background: var(--primary);
       color: #fff;
       border-color: var(--primary);
     }
+    .chip.editing {
+      border-style: dashed;
+      border-color: var(--danger);
+      color: var(--danger);
+      background: #fef2f2;
+    }
+    .add-material-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .add-material-row input { flex: 1; }
     .hint { font-size: 0.82rem; color: var(--muted); }
     input[type="number"], input[type="text"], textarea {
       width: 100%;
@@ -178,9 +212,16 @@
       </div>
 
       <div class="section">
-        <label class="title">教材 *</label>
+        <div class="label-row">
+          <label class="title">教材 *</label>
+          <button type="button" class="edit-toggle" id="editMaterialBtn" style="display:none;">編集</button>
+        </div>
         <div class="chips" id="materialChips">
           <span class="hint">先に科目を選択してください</span>
+        </div>
+        <div class="add-material-row" id="addMaterialRow" style="display:none;">
+          <input type="text" id="newMaterialInput" placeholder="追加する教材名を入力" />
+          <button type="button" class="btn btn-primary" id="addMaterialBtn">追加</button>
         </div>
       </div>
 
@@ -237,8 +278,8 @@
     // ===== 設定エリア =====
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbzE8uqAzZaCao5IIh2P-9HtpbRxPpCO_hDPfG5tsFb7lxA9iXtgaxp5tI0Zi4VVtvb9/exec';
 
-    // 科目ごとの教材リスト（自由に書き換えてください）
-    const MATERIALS_BY_SUBJECT = {
+    // 初期の教材リスト
+    const DEFAULT_MATERIALS = {
       '財務(計算)': ['テキスト', '個別問題集', '短答問題集', '答練', '講義'],
       '財務(理論)': ['テキスト', '短答問題集', 'コンサマ', '答練', '講義'],
       '管理会計':   ['テキスト', '個別問題集', '短答問題集', '原価計算基準', '答練'],
@@ -250,11 +291,27 @@
     const RATINGS = ['◎ 余裕', '○ 普通', '△ 要復習'];
     // =====================
 
-    const SUBJECTS = Object.keys(MATERIALS_BY_SUBJECT);
+    const KEY_MATERIALS = 'cpa_materials_v1';
+    let materialsBySubject = loadMaterials();
+    const SUBJECTS = Object.keys(DEFAULT_MATERIALS);
+
     let selectedSubject = '';
     let selectedMaterial = '';
     let selectedRating = '';
+    let isEditingMaterials = false;
     let chartInstance = null;
+
+    function loadMaterials() {
+      try {
+        const saved = localStorage.getItem(KEY_MATERIALS);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return JSON.parse(JSON.stringify(DEFAULT_MATERIALS));
+    }
+
+    function saveMaterials() {
+      localStorage.setItem(KEY_MATERIALS, JSON.stringify(materialsBySubject));
+    }
 
     // タブ切り替え
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -267,7 +324,7 @@
       };
     });
 
-    // チップ生成
+    // 汎用チップ生成
     function renderChips(containerId, items, onSelect) {
       const el = document.getElementById(containerId);
       el.innerHTML = '';
@@ -285,11 +342,79 @@
       });
     }
 
-    // 科目選択時に教材リストを切り替え
+    // 教材チップ描画（通常モード / 編集モード）
+    const editMaterialBtn = document.getElementById('editMaterialBtn');
+    const addMaterialRow = document.getElementById('addMaterialRow');
+    const newMaterialInput = document.getElementById('newMaterialInput');
+
+    function renderMaterials() {
+      const el = document.getElementById('materialChips');
+      if (!selectedSubject) {
+        el.innerHTML = '<span class="hint">先に科目を選択してください</span>';
+        editMaterialBtn.style.display = 'none';
+        addMaterialRow.style.display = 'none';
+        return;
+      }
+
+      editMaterialBtn.style.display = 'inline-block';
+      editMaterialBtn.textContent = isEditingMaterials ? '完了' : '編集';
+      addMaterialRow.style.display = isEditingMaterials ? 'flex' : 'none';
+
+      const list = materialsBySubject[selectedSubject] || [];
+      el.innerHTML = '';
+
+      if (list.length === 0) {
+        el.innerHTML = '<span class="hint">教材がありません。「編集」から追加してください</span>';
+        return;
+      }
+
+      list.forEach((item, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+
+        if (isEditingMaterials) {
+          btn.className = 'chip editing';
+          btn.textContent = `${item} ×`;
+          btn.onclick = () => {
+            materialsBySubject[selectedSubject].splice(idx, 1);
+            if (selectedMaterial === item) selectedMaterial = '';
+            saveMaterials();
+            renderMaterials();
+          };
+        } else {
+          btn.className = 'chip' + (selectedMaterial === item ? ' active' : '');
+          btn.textContent = item;
+          btn.onclick = () => {
+            selectedMaterial = item;
+            renderMaterials();
+          };
+        }
+        el.appendChild(btn);
+      });
+    }
+
+    editMaterialBtn.onclick = () => {
+      isEditingMaterials = !isEditingMaterials;
+      renderMaterials();
+    };
+
+    document.getElementById('addMaterialBtn').onclick = () => {
+      const name = newMaterialInput.value.trim();
+      if (!name || !selectedSubject) return;
+      if (!materialsBySubject[selectedSubject].includes(name)) {
+        materialsBySubject[selectedSubject].push(name);
+        saveMaterials();
+      }
+      newMaterialInput.value = '';
+      renderMaterials();
+    };
+
+    // 科目選択
     renderChips('subjectChips', SUBJECTS, subject => {
       selectedSubject = subject;
       selectedMaterial = '';
-      renderChips('materialChips', MATERIALS_BY_SUBJECT[subject], m => selectedMaterial = m);
+      isEditingMaterials = false;
+      renderMaterials();
     });
     renderChips('ratingChips', RATINGS, v => selectedRating = v.split(' ')[0]);
 
@@ -393,14 +518,12 @@
       }
     };
 
-    // 分を「〇h 〇m」表記に変換
     function fmtHours(mins) {
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       return h > 0 ? `${h}h ${m}m` : `${m}m`;
     }
 
-    // ダッシュボード読み込み
     async function loadDashboard() {
       const dashStatus = document.getElementById('dashStatus');
       dashStatus.textContent = '読み込み中...';
