@@ -99,6 +99,12 @@
       margin-bottom: 12px;
     }
     .timer-btns { display: flex; gap: 8px; justify-content: center; }
+    .time-range-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+    }
     .btn {
       border: 1px solid var(--border);
       background: #fff;
@@ -125,9 +131,6 @@
       font-size: 0.85rem;
       cursor: pointer;
       transition: 0.15s;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
     }
     .chip.active {
       background: var(--primary);
@@ -147,7 +150,7 @@
     }
     .add-material-row input { flex: 1; }
     .hint { font-size: 0.82rem; color: var(--muted); }
-    input[type="number"], input[type="text"], textarea {
+    input[type="number"], input[type="text"], input[type="time"], textarea {
       width: 100%;
       padding: 10px 12px;
       border: 1px solid var(--border);
@@ -163,8 +166,6 @@
       min-height: 1.2em;
       color: var(--muted);
     }
-
-    /* ダッシュボード */
     .kpi-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -226,6 +227,15 @@
       </div>
 
       <div class="section">
+        <label class="title">時間帯（タイマーで自動入力／手入力も可）</label>
+        <div class="time-range-row">
+          <input type="time" id="startTimeInput" />
+          <span style="color:var(--muted);">〜</span>
+          <input type="time" id="endTimeInput" />
+        </div>
+      </div>
+
+      <div class="section">
         <label class="title" for="minutes">学習時間（分） *</label>
         <input type="number" id="minutes" min="1" placeholder="タイマー停止で自動入力（手入力も可）" />
       </div>
@@ -278,7 +288,6 @@
     // ===== 設定エリア =====
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbzE8uqAzZaCao5IIh2P-9HtpbRxPpCO_hDPfG5tsFb7lxA9iXtgaxp5tI0Zi4VVtvb9/exec';
 
-    // 初期の教材リスト
     const DEFAULT_MATERIALS = {
       '財務(計算)': ['テキスト', '個別問題集', '短答問題集', '答練', '講義'],
       '財務(理論)': ['テキスト', '短答問題集', 'コンサマ', '答練', '講義'],
@@ -291,26 +300,41 @@
     const RATINGS = ['◎ 余裕', '○ 普通', '△ 要復習'];
     // =====================
 
-    const KEY_MATERIALS = 'cpa_materials_v1';
-    let materialsBySubject = loadMaterials();
     const SUBJECTS = Object.keys(DEFAULT_MATERIALS);
-
+    let materialsBySubject = JSON.parse(JSON.stringify(DEFAULT_MATERIALS));
     let selectedSubject = '';
     let selectedMaterial = '';
     let selectedRating = '';
     let isEditingMaterials = false;
     let chartInstance = null;
 
-    function loadMaterials() {
+    // 起動時にスプレッドシートから最新の教材リストを同期
+    async function syncMaterialsFromCloud() {
       try {
-        const saved = localStorage.getItem(KEY_MATERIALS);
-        if (saved) return JSON.parse(saved);
+        const res = await fetch(GAS_URL);
+        const data = await res.json();
+        if (data.status === 'ok' && data.materials && Object.keys(data.materials).length > 0) {
+          materialsBySubject = data.materials;
+          if (selectedSubject) renderMaterials();
+        }
       } catch (e) {}
-      return JSON.parse(JSON.stringify(DEFAULT_MATERIALS));
     }
 
-    function saveMaterials() {
-      localStorage.setItem(KEY_MATERIALS, JSON.stringify(materialsBySubject));
+    // 教材リストをスプレッドシートに保存（全デバイス同期）
+    async function saveMaterialsToCloud() {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = '教材リストを同期中...';
+      try {
+        await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'saveMaterials', materials: materialsBySubject })
+        });
+        statusEl.textContent = '教材リストを全デバイスに同期しました';
+        setTimeout(() => { if (statusEl.textContent.includes('同期')) statusEl.textContent = ''; }, 2500);
+      } catch (e) {
+        statusEl.textContent = '教材の同期に失敗しました';
+      }
     }
 
     // タブ切り替え
@@ -324,7 +348,6 @@
       };
     });
 
-    // 汎用チップ生成
     function renderChips(containerId, items, onSelect) {
       const el = document.getElementById(containerId);
       el.innerHTML = '';
@@ -342,7 +365,6 @@
       });
     }
 
-    // 教材チップ描画（通常モード / 編集モード）
     const editMaterialBtn = document.getElementById('editMaterialBtn');
     const addMaterialRow = document.getElementById('addMaterialRow');
     const newMaterialInput = document.getElementById('newMaterialInput');
@@ -371,15 +393,14 @@
       list.forEach((item, idx) => {
         const btn = document.createElement('button');
         btn.type = 'button';
-
         if (isEditingMaterials) {
           btn.className = 'chip editing';
           btn.textContent = `${item} ×`;
           btn.onclick = () => {
             materialsBySubject[selectedSubject].splice(idx, 1);
             if (selectedMaterial === item) selectedMaterial = '';
-            saveMaterials();
             renderMaterials();
+            saveMaterialsToCloud();
           };
         } else {
           btn.className = 'chip' + (selectedMaterial === item ? ' active' : '');
@@ -401,15 +422,15 @@
     document.getElementById('addMaterialBtn').onclick = () => {
       const name = newMaterialInput.value.trim();
       if (!name || !selectedSubject) return;
+      if (!materialsBySubject[selectedSubject]) materialsBySubject[selectedSubject] = [];
       if (!materialsBySubject[selectedSubject].includes(name)) {
         materialsBySubject[selectedSubject].push(name);
-        saveMaterials();
+        saveMaterialsToCloud();
       }
       newMaterialInput.value = '';
       renderMaterials();
     };
 
-    // 科目選択
     renderChips('subjectChips', SUBJECTS, subject => {
       selectedSubject = subject;
       selectedMaterial = '';
@@ -418,13 +439,21 @@
     });
     renderChips('ratingChips', RATINGS, v => selectedRating = v.split(' ')[0]);
 
-    // タイマー管理
+    // 時刻フォーマット（HH:MM）
+    function fmtTime(dateObj) {
+      return `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+    }
+
+    // タイマー管理（開始時刻・終了時刻も自動保持）
     const KEY_START = 'cpa_timer_start';
     const KEY_ACCUM = 'cpa_timer_accum';
+    const KEY_FIRST_START = 'cpa_timer_first_start';
     let timerInterval = null;
     const display = document.getElementById('display');
     const startStopBtn = document.getElementById('startStopBtn');
     const minutesInput = document.getElementById('minutes');
+    const startTimeInput = document.getElementById('startTimeInput');
+    const endTimeInput = document.getElementById('endTimeInput');
 
     function getElapsedSec() {
       const accum = Number(localStorage.getItem(KEY_ACCUM) || 0);
@@ -439,7 +468,12 @@
       display.textContent = `${h}:${m}:${s}`;
     }
     function startTimer() {
-      if (!localStorage.getItem(KEY_START)) localStorage.setItem(KEY_START, String(Date.now()));
+      const now = Date.now();
+      if (!localStorage.getItem(KEY_START)) localStorage.setItem(KEY_START, String(now));
+      if (!localStorage.getItem(KEY_FIRST_START)) {
+        localStorage.setItem(KEY_FIRST_START, String(now));
+        startTimeInput.value = fmtTime(new Date(now));
+      }
       startStopBtn.textContent = '停止';
       clearInterval(timerInterval);
       timerInterval = setInterval(updateDisplay, 500);
@@ -452,18 +486,31 @@
       clearInterval(timerInterval);
       startStopBtn.textContent = '再開';
       updateDisplay();
-      if (total > 0) minutesInput.value = Math.max(1, Math.round(total / 60));
+      if (total > 0) {
+        minutesInput.value = Math.max(1, Math.round(total / 60));
+        endTimeInput.value = fmtTime(new Date());
+      }
     }
     function resetTimer() {
       clearInterval(timerInterval);
       localStorage.removeItem(KEY_START);
       localStorage.removeItem(KEY_ACCUM);
+      localStorage.removeItem(KEY_FIRST_START);
       startStopBtn.textContent = '開始';
       updateDisplay();
     }
 
     startStopBtn.onclick = () => localStorage.getItem(KEY_START) ? stopTimer() : startTimer();
-    document.getElementById('resetBtn').onclick = () => { resetTimer(); minutesInput.value = ''; };
+    document.getElementById('resetBtn').onclick = () => {
+      resetTimer();
+      minutesInput.value = '';
+      startTimeInput.value = '';
+      endTimeInput.value = '';
+    };
+
+    if (localStorage.getItem(KEY_FIRST_START)) {
+      startTimeInput.value = fmtTime(new Date(Number(localStorage.getItem(KEY_FIRST_START))));
+    }
     if (localStorage.getItem(KEY_START)) startTimer();
     else updateDisplay();
 
@@ -481,6 +528,12 @@
       const now = new Date();
       const dateStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
 
+      // 時間帯が空欄のまま手入力で送信した場合は、現在時刻から逆算して自動補完
+      let endTime = endTimeInput.value;
+      let startTime = startTimeInput.value;
+      if (!endTime) endTime = fmtTime(now);
+      if (!startTime) startTime = fmtTime(new Date(now.getTime() - minutes * 60000));
+
       const payload = {
         date: dateStr,
         subject: selectedSubject,
@@ -488,7 +541,9 @@
         minutes,
         topic: document.getElementById('topic').value.trim(),
         rating: selectedRating,
-        memo: document.getElementById('memo').value.trim()
+        memo: document.getElementById('memo').value.trim(),
+        start_time: startTime,
+        end_time: endTime
       };
 
       const submitBtn = document.getElementById('submitBtn');
@@ -503,16 +558,18 @@
         });
         const json = await res.json();
         if (json.status === 'ok') {
-          statusEl.textContent = `記録しました（${selectedSubject} / ${selectedMaterial} / ${minutes}分）`;
+          statusEl.textContent = `記録しました（${startTime}〜${endTime} / ${selectedSubject} / ${minutes}分）`;
           resetTimer();
           minutesInput.value = '';
+          startTimeInput.value = '';
+          endTimeInput.value = '';
           document.getElementById('topic').value = '';
           document.getElementById('memo').value = '';
         } else {
           throw new Error(json.message);
         }
       } catch (err) {
-        statusEl.textContent = '送信エラー：URLやデプロイ設定を確認してください。';
+        statusEl.textContent = '送信エラー：GASを新バージョンで再デプロイしたか確認してください。';
       } finally {
         submitBtn.disabled = false;
       }
@@ -531,6 +588,10 @@
         const res = await fetch(GAS_URL);
         const data = await res.json();
         if (data.status !== 'ok') throw new Error(data.message);
+
+        if (data.materials && Object.keys(data.materials).length > 0) {
+          materialsBySubject = data.materials;
+        }
 
         const todayPct = data.today.planned > 0 ? Math.round((data.today.actual / data.today.planned) * 100) : 0;
         const weekPct = data.week.planned > 0 ? Math.round((data.week.actual / data.week.planned) * 100) : 0;
@@ -570,6 +631,7 @@
     }
 
     document.getElementById('refreshBtn').onclick = loadDashboard;
+    syncMaterialsFromCloud();
   </script>
 </body>
 </html>
