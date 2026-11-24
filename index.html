@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>CPA Study Logger</title>
-  <link rel="apple-touch-icon" href="icon.png" />
-<link rel="icon" type="image/png" href="icon.png" />
+  <link rel="apple-touch-icon" href="icon.png?v=2" />
+  <link rel="icon" type="image/png" href="icon.png?v=2" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -20,7 +21,11 @@
       --danger: #ef4444;
       --border: #e5e7eb;
     }
-    * { box-sizing: border-box; }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -28,14 +33,16 @@
       color: var(--text);
       padding: 16px;
     }
+
     .container {
       max-width: 560px;
       margin: 0 auto;
       background: var(--card);
       border-radius: 16px;
       padding: 20px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
     }
+
     .tabs {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -45,6 +52,7 @@
       padding: 4px;
       border-radius: 12px;
     }
+
     .tab-btn {
       border: none;
       background: transparent;
@@ -55,21 +63,32 @@
       color: var(--muted);
       cursor: pointer;
     }
+
     .tab-btn.active {
       background: #fff;
       color: var(--text);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
     }
-    .view { display: none; }
-    .view.active { display: block; }
 
-    .section { margin-bottom: 16px; }
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    .section {
+      margin-bottom: 16px;
+    }
+
     .label-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 8px;
     }
+
     label.title {
       display: block;
       font-size: 0.85rem;
@@ -77,7 +96,11 @@
       color: var(--muted);
       margin-bottom: 8px;
     }
-    .label-row label.title { margin-bottom: 0; }
+
+    .label-row label.title {
+      margin-bottom: 0;
+    }
+
     .edit-toggle {
       border: none;
       background: transparent;
@@ -87,6 +110,7 @@
       cursor: pointer;
       padding: 2px 6px;
     }
+
     .timer-box {
       text-align: center;
       background: #f9fafb;
@@ -94,19 +118,27 @@
       border-radius: 12px;
       padding: 16px;
     }
+
     .time-display {
       font-size: 2.4rem;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       margin-bottom: 12px;
     }
-    .timer-btns { display: flex; gap: 8px; justify-content: center; }
+
+    .timer-btns {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+
     .time-range-row {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       align-items: center;
       gap: 8px;
     }
+
     .btn {
       border: 1px solid var(--border);
       background: #fff;
@@ -117,14 +149,29 @@
       font-weight: 600;
       cursor: pointer;
     }
+
     .btn-primary {
       background: var(--primary);
       color: #fff;
       border-color: var(--primary);
     }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-full { width: 100%; padding: 14px; font-size: 1rem; }
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-full {
+      width: 100%;
+      padding: 14px;
+      font-size: 1rem;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
     .chip {
       border: 1px solid var(--border);
       background: #fff;
@@ -134,25 +181,40 @@
       cursor: pointer;
       transition: 0.15s;
     }
+
     .chip.active {
       background: var(--primary);
       color: #fff;
       border-color: var(--primary);
     }
+
     .chip.editing {
       border-style: dashed;
       border-color: var(--danger);
       color: var(--danger);
       background: #fef2f2;
     }
+
     .add-material-row {
       display: flex;
       gap: 8px;
       margin-top: 10px;
     }
-    .add-material-row input { flex: 1; }
-    .hint { font-size: 0.82rem; color: var(--muted); }
-    input[type="number"], input[type="text"], input[type="time"], textarea {
+
+    .add-material-row input {
+      flex: 1;
+    }
+
+    .hint {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    input[type="number"],
+    input[type="text"],
+    input[type="time"],
+    input[type="date"],
+    textarea {
       width: 100%;
       padding: 10px 12px;
       border: 1px solid var(--border);
@@ -160,7 +222,12 @@
       font-size: 0.95rem;
       font-family: inherit;
     }
-    textarea { resize: vertical; min-height: 70px; }
+
+    textarea {
+      resize: vertical;
+      min-height: 70px;
+    }
+
     .status {
       text-align: center;
       font-size: 0.85rem;
@@ -168,21 +235,38 @@
       min-height: 1.2em;
       color: var(--muted);
     }
+
     .kpi-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
       margin-bottom: 18px;
     }
+
     .kpi-card {
       background: #f9fafb;
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 14px;
     }
-    .kpi-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
-    .kpi-value { font-size: 1.4rem; font-weight: 700; }
-    .kpi-sub { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+    .kpi-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .kpi-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .kpi-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
     .chart-wrap {
       background: #fff;
       border: 1px solid var(--border);
@@ -192,6 +276,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="tabs">
@@ -206,6 +291,7 @@
         <div class="timer-btns">
           <button class="btn btn-primary" id="startStopBtn">開始</button>
           <button class="btn" id="resetBtn">リセット</button>
+          <button class="btn" id="syncTimerBtn" title="他端末のタイマー状態を取得">同期</button>
         </div>
       </div>
 
@@ -226,6 +312,11 @@
           <input type="text" id="newMaterialInput" placeholder="追加する教材名を入力" />
           <button type="button" class="btn btn-primary" id="addMaterialBtn">追加</button>
         </div>
+      </div>
+
+      <div class="section">
+        <label class="title" for="studyDateInput">学習日（デフォルト今日／過去日も可）</label>
+        <input type="date" id="studyDateInput" />
       </div>
 
       <div class="section">
@@ -293,11 +384,11 @@
     const DEFAULT_MATERIALS = {
       '財務(計算)': ['テキスト', '個別問題集', '短答問題集', '答練', '講義'],
       '財務(理論)': ['テキスト', '短答問題集', 'コンサマ', '答練', '講義'],
-      '管理会計':   ['テキスト', '個別問題集', '短答問題集', '原価計算基準', '答練'],
-      '監査論':     ['テキスト', '短答問題集', '資料集', '答練', '講義'],
-      '企業法':     ['テキスト', '短答問題集', '条文・ポケット六法', '答練', '講義'],
-      '租税法':     ['テキスト', '個別問題集', '理論対策', '答練', '講義'],
-      '選択科目':   ['テキスト', '問題集', '答練', '講義']
+      '管理会計': ['テキスト', '個別問題集', '短答問題集', '原価計算基準', '答練'],
+      '監査論': ['テキスト', '短答問題集', '資料集', '答練', '講義'],
+      '企業法': ['テキスト', '短答問題集', '条文・ポケット六法', '答練', '講義'],
+      '租税法': ['テキスト', '個別問題集', '理論対策', '答練', '講義'],
+      '選択科目': ['テキスト', '問題集', '答練', '講義']
     };
     const RATINGS = ['◎ 余裕', '○ 普通', '△ 要復習'];
     // =====================
@@ -310,16 +401,29 @@
     let isEditingMaterials = false;
     let chartInstance = null;
 
-    // 起動時にスプレッドシートから最新の教材リストを同期
-    async function syncMaterialsFromCloud() {
+    // 起動時にスプレッドシートから最新の教材リスト・タイマー状態を同期
+    async function syncFromCloud(showMsg = false) {
+      const statusEl = document.getElementById('status');
+      if (showMsg) statusEl.textContent = 'クラウドから同期中...';
       try {
         const res = await fetch(GAS_URL);
         const data = await res.json();
-        if (data.status === 'ok' && data.materials && Object.keys(data.materials).length > 0) {
-          materialsBySubject = data.materials;
-          if (selectedSubject) renderMaterials();
+        if (data.status === 'ok') {
+          if (data.materials && Object.keys(data.materials).length > 0) {
+            materialsBySubject = data.materials;
+            if (selectedSubject) renderMaterials();
+          }
+          if (data.activeTimer) {
+            applyCloudTimer(data.activeTimer);
+          }
+          if (showMsg) {
+            statusEl.textContent = '他端末の状態と同期しました';
+            setTimeout(() => { if (statusEl.textContent.includes('同期')) statusEl.textContent = ''; }, 2500);
+          }
         }
-      } catch (e) {}
+      } catch (e) {
+        if (showMsg) statusEl.textContent = '同期に失敗しました';
+      }
     }
 
     // 教材リストをスプレッドシートに保存（全デバイス同期）
@@ -446,10 +550,18 @@
       return `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
     }
 
-    // タイマー管理（開始時刻・終了時刻も自動保持）
+    // 日付フォーマット（YYYY-MM-DD）
+    function fmtDateInput(dateObj) {
+      return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+    }
+    const studyDateInput = document.getElementById('studyDateInput');
+    studyDateInput.value = fmtDateInput(new Date());
+
+    // タイマー管理（開始時刻・終了時刻・デバイス間同期対応）
     const KEY_START = 'cpa_timer_start';
     const KEY_ACCUM = 'cpa_timer_accum';
     const KEY_FIRST_START = 'cpa_timer_first_start';
+    const KEY_UPDATED = 'cpa_timer_updated';
     let timerInterval = null;
     const display = document.getElementById('display');
     const startStopBtn = document.getElementById('startStopBtn');
@@ -469,7 +581,70 @@
       const s = String(sec % 60).padStart(2, '0');
       display.textContent = `${h}:${m}:${s}`;
     }
-    function startTimer() {
+    function selectSubjectUI(subj, mat) {
+      if (!subj || !SUBJECTS.includes(subj)) return;
+      selectedSubject = subj;
+      selectedMaterial = mat || '';
+      isEditingMaterials = false;
+      const chips = [...document.getElementById('subjectChips').children];
+      chips.forEach(c => c.classList.toggle('active', c.textContent === subj));
+      renderMaterials();
+    }
+    async function saveTimerToCloud() {
+      const updatedAt = Date.now();
+      localStorage.setItem(KEY_UPDATED, String(updatedAt));
+      const timerState = {
+        start: Number(localStorage.getItem(KEY_START) || 0),
+        accum: Number(localStorage.getItem(KEY_ACCUM) || 0),
+        firstStart: Number(localStorage.getItem(KEY_FIRST_START) || 0),
+        subject: selectedSubject || '',
+        material: selectedMaterial || '',
+        updatedAt
+      };
+      try {
+        await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'saveTimer', timer: timerState })
+        });
+      } catch (e) { }
+    }
+    function applyCloudTimer(ct) {
+      const localUpdated = Number(localStorage.getItem(KEY_UPDATED) || 0);
+      if (!ct || !ct.updatedAt || ct.updatedAt <= localUpdated) return;
+
+      clearInterval(timerInterval);
+      localStorage.setItem(KEY_UPDATED, String(ct.updatedAt));
+      if (ct.start) localStorage.setItem(KEY_START, String(ct.start));
+      else localStorage.removeItem(KEY_START);
+
+      if (ct.accum) localStorage.setItem(KEY_ACCUM, String(ct.accum));
+      else localStorage.removeItem(KEY_ACCUM);
+
+      if (ct.firstStart) {
+        localStorage.setItem(KEY_FIRST_START, String(ct.firstStart));
+        startTimeInput.value = fmtTime(new Date(ct.firstStart));
+      } else {
+        localStorage.removeItem(KEY_FIRST_START);
+        startTimeInput.value = '';
+      }
+
+      if (ct.subject) selectSubjectUI(ct.subject, ct.material);
+
+      if (ct.start) {
+        startStopBtn.textContent = '停止';
+        timerInterval = setInterval(updateDisplay, 500);
+        updateDisplay();
+      } else if (ct.accum > 0) {
+        startStopBtn.textContent = '再開';
+        updateDisplay();
+        minutesInput.value = Math.max(1, Math.round(ct.accum / 60));
+      } else {
+        startStopBtn.textContent = '開始';
+        updateDisplay();
+      }
+    }
+    function startTimer(sync = true) {
       const now = Date.now();
       if (!localStorage.getItem(KEY_START)) localStorage.setItem(KEY_START, String(now));
       if (!localStorage.getItem(KEY_FIRST_START)) {
@@ -480,8 +655,9 @@
       clearInterval(timerInterval);
       timerInterval = setInterval(updateDisplay, 500);
       updateDisplay();
+      if (sync) saveTimerToCloud();
     }
-    function stopTimer() {
+    function stopTimer(sync = true) {
       const total = getElapsedSec();
       localStorage.setItem(KEY_ACCUM, String(total));
       localStorage.removeItem(KEY_START);
@@ -492,34 +668,37 @@
         minutesInput.value = Math.max(1, Math.round(total / 60));
         endTimeInput.value = fmtTime(new Date());
       }
+      if (sync) saveTimerToCloud();
     }
-    function resetTimer() {
+    function resetTimer(sync = true) {
       clearInterval(timerInterval);
       localStorage.removeItem(KEY_START);
       localStorage.removeItem(KEY_ACCUM);
       localStorage.removeItem(KEY_FIRST_START);
       startStopBtn.textContent = '開始';
       updateDisplay();
+      if (sync) saveTimerToCloud();
     }
 
-    startStopBtn.onclick = () => localStorage.getItem(KEY_START) ? stopTimer() : startTimer();
+    startStopBtn.onclick = () => localStorage.getItem(KEY_START) ? stopTimer(true) : startTimer(true);
     document.getElementById('resetBtn').onclick = () => {
-      resetTimer();
+      resetTimer(true);
       minutesInput.value = '';
       startTimeInput.value = '';
       endTimeInput.value = '';
     };
+    document.getElementById('syncTimerBtn').onclick = () => syncFromCloud(true);
 
     if (localStorage.getItem(KEY_FIRST_START)) {
       startTimeInput.value = fmtTime(new Date(Number(localStorage.getItem(KEY_FIRST_START))));
     }
-    if (localStorage.getItem(KEY_START)) startTimer();
+    if (localStorage.getItem(KEY_START)) startTimer(false);
     else updateDisplay();
 
     // 記録送信
     document.getElementById('submitBtn').onclick = async () => {
       const statusEl = document.getElementById('status');
-      if (localStorage.getItem(KEY_START)) stopTimer();
+      if (localStorage.getItem(KEY_START)) stopTimer(false);
 
       const minutes = Number(minutesInput.value);
       if (!selectedSubject || !selectedMaterial || !minutes) {
@@ -528,7 +707,10 @@
       }
 
       const now = new Date();
-      const dateStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+      const rawDate = studyDateInput.value;
+      const dateStr = rawDate
+        ? rawDate.replace(/-/g, '/')
+        : `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
 
       // 時間帯が空欄のまま手入力で送信した場合は、現在時刻から逆算して自動補完
       let endTime = endTimeInput.value;
@@ -560,8 +742,9 @@
         });
         const json = await res.json();
         if (json.status === 'ok') {
-          statusEl.textContent = `記録しました（${startTime}〜${endTime} / ${selectedSubject} / ${minutes}分）`;
-          resetTimer();
+          statusEl.textContent = `記録しました（${dateStr} ${startTime}〜${endTime} / ${selectedSubject} / ${minutes}分）`;
+          resetTimer(true);
+          studyDateInput.value = fmtDateInput(new Date());
           minutesInput.value = '';
           startTimeInput.value = '';
           endTimeInput.value = '';
@@ -633,7 +816,8 @@
     }
 
     document.getElementById('refreshBtn').onclick = loadDashboard;
-    syncMaterialsFromCloud();
+    syncFromCloud(false);
   </script>
 </body>
+
 </html>
